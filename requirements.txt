@@ -1,0 +1,4 @@
+gtts
+requests
+wikipedia-api
+genanki
