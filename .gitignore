@@ -1,6 +1,7 @@
 # Ignoriere Bilder und Audiodateien
 data/images/*
 data/audio/*
+output/* 
 
 # Virtuelle Umgebung ignorieren
 venv/
