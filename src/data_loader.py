@@ -2,33 +2,51 @@ import csv
 import os
 from gtts import gTTS
 import requests
-import wikipediaapi
 
 class DataLoader:
-    def __init__(self, csv_dir, image_dir, audio_dir):
+    def __init__(self, csv_dir, image_dir, audio_dir, unsplash_access_key):
         self.csv_dir = csv_dir
         self.image_dir = image_dir
         self.audio_dir = audio_dir
+        self.unsplash_access_key = unsplash_access_key
         self.media_files = []
-        self.wiki_wiki = wikipediaapi.Wikipedia(
-            'en',
-            extract_format=wikipediaapi.ExtractFormat.WIKI,
-            user_agent="HobbyProject/1.0 (https://github.com/username/hobbyproject; leuothemilio@gmail.com)"
-        )
 
     def generate_audio(self, text, filename):
         tts = gTTS(text, lang='ja')
         tts.save(filename)
 
+    def search_unsplash_images(self, search_term):
+        url = "https://api.unsplash.com/search/photos"
+        headers = {
+            "Authorization": f"Client-ID {self.unsplash_access_key}",
+            "User-Agent": "JapanischLernenApp/1.0 (https://example.com/contact; email@example.com)"
+        }
+        params = {
+            "query": search_term,
+            "per_page": 1  # Anzahl der gewünschten Ergebnisse pro Seite
+        }
+        response = requests.get(url, headers=headers, params=params)
+        
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if data['results']:
+                    return data['results'][0]['urls']['small']  # URL des ersten Bildes
+                else:
+                    print(f"No results found for {search_term}")
+            except requests.exceptions.JSONDecodeError:
+                print("Error decoding JSON response")
+        else:
+            print(f"Failed to fetch image for {search_term}, status code: {response.status_code}")
+        return None
+
     def download_image(self, search_term, filename):
-        page = self.wiki_wiki.page(search_term)
-        if page.exists():
-            for image in page.images:
-                if "commons" in image:
-                    img_data = requests.get(image).content
-                    with open(filename, 'wb') as handler:
-                        handler.write(img_data)
-                    break
+        image_url = self.search_unsplash_images(search_term)
+        if image_url:
+            img_data = requests.get(image_url).content
+            with open(filename, 'wb') as handler:
+                handler.write(img_data)
+            print(f"Downloaded image to {filename}")
 
     def load_data(self, card_type, parent_deck):
         # Konvention: Verwende die CSV-Datei, die den Namen des übergeordneten Stapels hat
@@ -43,9 +61,11 @@ class DataLoader:
             result = []
             for row in reader:
                 img_filename = f"{row['Romaji']}.png"
+                img_alt_filename = f"{row['Romaji']}.jpg"
                 audio_filename_hiragana = f"hiragana_{row['Romaji']}.mp3"
                 audio_filename_katakana = f"katakana_{row['Romaji']}.mp3"
                 img_path = os.path.join(self.image_dir, img_filename)
+                img_alt_path = os.path.join(self.image_dir, img_alt_filename)
                 audio_path_hiragana = os.path.join(self.audio_dir, audio_filename_hiragana)
                 audio_path_katakana = os.path.join(self.audio_dir, audio_filename_katakana)
                 
@@ -56,8 +76,8 @@ class DataLoader:
                     self.generate_audio(row['Katakana'], audio_path_katakana)
 
                 # Lade Bilder herunter, falls sie nicht existieren
-                if not os.path.exists(img_path):
-                    self.download_image(row['Deutsch'], img_path)
+                if not os.path.exists(img_path) or not os.path.exists(img_alt_path):
+                    pass #self.download_image(row['Deutsch'], img_alt_path)
 
                 if os.path.exists(img_path):
                     self.media_files.append(img_path)
