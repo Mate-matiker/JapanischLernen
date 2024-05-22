@@ -60,25 +60,30 @@ class DataLoader:
             reader = csv.DictReader(file)
             result = []
             for row in reader:
-                img_filename = f"{row['Romaji']}.png"
-                img_alt_filename = f"{row['Romaji']}.jpg"
-                audio_filename_hiragana = f"hiragana_{row['Romaji']}.mp3"
-                audio_filename_katakana = f"katakana_{row['Romaji']}.mp3"
+                romaji = row['Romaji']
+                hiragana = row['Hiragana']
+                katakana = row['Katakana']
+                deutsch = row['Deutsch']
+
+                # Generate file names for media
+                img_filename = f"{romaji}.png".replace(' ', '_')
+                audio_filename_hiragana = f"hiragana_{romaji}.mp3".replace(' ', '_')
+                audio_filename_katakana = f"katakana_{romaji}.mp3".replace(' ', '_')
                 img_path = os.path.join(self.image_dir, img_filename)
-                img_alt_path = os.path.join(self.image_dir, img_alt_filename)
                 audio_path_hiragana = os.path.join(self.audio_dir, audio_filename_hiragana)
                 audio_path_katakana = os.path.join(self.audio_dir, audio_filename_katakana)
-                
-                # Generiere Audiodateien, falls sie nicht existieren
+
+                # Generate audio files if they don't exist
                 if not os.path.exists(audio_path_hiragana):
-                    self.generate_audio(row['Hiragana'], audio_path_hiragana)
+                    self.generate_audio(hiragana, audio_path_hiragana)
                 if not os.path.exists(audio_path_katakana):
-                    self.generate_audio(row['Katakana'], audio_path_katakana)
+                    self.generate_audio(katakana, audio_path_katakana)
 
-                # Lade Bilder herunter, falls sie nicht existieren
-                if not os.path.exists(img_path) or not os.path.exists(img_alt_path):
-                    pass #self.download_image(row['Deutsch'], img_alt_path)
+                # Download images if they don't exist
+                if not os.path.exists(img_path):
+                    pass #self.download_image(deutsch, img_path)
 
+                # Add media files to the list
                 if os.path.exists(img_path):
                     self.media_files.append(img_path)
                 if os.path.exists(audio_path_hiragana):
@@ -86,30 +91,24 @@ class DataLoader:
                 if os.path.exists(audio_path_katakana):
                     self.media_files.append(audio_path_katakana)
 
-                if card_type == "hiragana_to_romaji":
-                    result.append([row['Hiragana'], row['Romaji']])
-                elif card_type == "romaji_to_hiragana":
-                    result.append([row['Romaji'], row['Hiragana']])
-                elif card_type == "audio_to_hiragana":
-                    result.append([f'[sound:{audio_filename_hiragana}]', row['Hiragana']])
-                elif card_type == "hiragana_to_audio":
-                    result.append([row['Hiragana'], f'[sound:{audio_filename_hiragana}]'])
-                elif card_type == "hiragana_to_deutsch":
-                    result.append([row['Hiragana'], row['Deutsch']])
+                # Append data according to card type
+                if card_type == "hiragana_audio_to_text":
+                    result.append([f'[sound:{audio_filename_hiragana}]', hiragana, romaji])
+                elif card_type == "katakana_audio_to_text":
+                    result.append([f'[sound:{audio_filename_katakana}]', katakana, romaji])
+                elif card_type == "hiragana_audio_to_deutsch":
+                    result.append([f'[sound:{audio_filename_hiragana}]', hiragana, deutsch, romaji])
+                elif card_type == "katakana_audio_to_deutsch":
+                    result.append([f'[sound:{audio_filename_katakana}]', katakana, deutsch, romaji])
+                elif card_type == "hiragana_text_to_audio":
+                    result.append([hiragana, f'[sound:{audio_filename_hiragana}]', romaji])
+                elif card_type == "katakana_text_to_audio":
+                    result.append([katakana, f'[sound:{audio_filename_katakana}]', romaji])
                 elif card_type == "image_to_hiragana":
-                    result.append([f'<img src="{img_filename}">', row['Hiragana']])
-                elif card_type == "deutsch_to_hiragana":
-                    result.append([row['Deutsch'], row['Hiragana']])
-                elif card_type == "deutsch_to_katakana":
-                    result.append([row['Deutsch'], row['Katakana']])
-                elif card_type == "hiragana_to_katakana":
-                    result.append([row['Hiragana'], row['Katakana']])
-                elif card_type == "image_to_deutsch":
-                    result.append([f'<img src="{img_filename}">', row['Deutsch']])
-                elif card_type == "audio_to_deutsch_hiragana":
-                    result.append([f'[sound:{audio_filename_hiragana}]', row['Deutsch']])
-                elif card_type == "audio_to_deutsch_katakana":
-                    result.append([f'[sound:{audio_filename_katakana}]', row['Deutsch']])
+                    result.append([f'<img src="{img_filename}">', f'[sound:{audio_filename_hiragana}]', hiragana, romaji])
+                elif card_type == "image_to_katakana":
+                    result.append([f'<img src="{img_filename}">', f'[sound:{audio_filename_katakana}]', katakana, romaji])
+
             return result
 
     def get_media_files(self):
